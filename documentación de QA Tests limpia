@@ -1,0 +1,66 @@
+#  Plan de Pruebas QA y Validación de Resiliencia - RPA
+
+Este documento detalla los escenarios de prueba ejecutados para garantizar la estabilidad, seguridad, trazabilidad y manejo de errores del sistema de autenticación y auditoría.
+
+---
+
+## 1. Requisitos Previos e Instalación de Dependencias
+
+Antes de ejecutar las pruebas en cualquier equipo, asegúrese de contar con las librerías necesarias ejecutando:
+
+```bash
+python -m pip install mysql-connector-python bcrypt matplotlib pandas
+
+
+2. Escenarios de Pruebas QA Ejecutados
+ Prueba 1: Caída o Indisponibilidad de la Base de Datos (BD Offline)
+Objetivo: Comprobar la resiliencia y tolerancia a fallos del sistema ante interrupciones de red o caídas del servicio MySQL.
+
+Procedimiento:
+
+Detener el servicio MySQL desde el panel de control (ej. XAMPP).
+
+Ejecutar el módulo de autenticación:
+
+
+python login_sistema.py
+
+Resultado Esperado: El sistema captura el error de conexión (Can't connect to MySQL server) mediante bloques de manejo de excepciones (try...except), mostrando un aviso controlado en consola sin que el script colapse o falle abruptamente.
+
+Prueba 2: Resistencia a Inyección SQL (Seguridad)
+Objetivo: Verificar la protección contra accesos no autorizados mediante la inyección de código SQL malicioso.
+
+Procedimiento:
+
+Con la base de datos encendida, ejecutar login_sistema.py.
+
+Introducir la siguiente carga maliciosa en el campo de usuario: ' OR '1'='1
+
+Introducir cualquier texto en el campo de contraseña.
+
+Resultado Esperado: Acceso denegado con el mensaje Acceso denegado: Usuario no encontrado. Las consultas preparadas parametrizadas (%s) neutralizan la inyección tratándola como una cadena de texto literal y registran el evento en logs_accesos.
+
+ Prueba 3: Carga de Logs Sintéticos y Estrés de Datos
+Objetivo: Evaluar el comportamiento dinámico de los gráficos ante múltiples registros consecutivos de accesos válidos y fallidos.
+
+Procedimiento:
+Ejecutar la inserción masiva de registros de prueba directamente desde la terminal:
+
+python -c "import mysql.connector; conn = mysql.connector.connect(host='localhost', user='root', password='', database='rpa_db'); cursor = conn.cursor(); [cursor.execute('INSERT INTO logs_accesos (username_intentado, estado, tipo_error) VALUES (%s, %s, %s)', (f'user_{i}', 'Exitoso' if i%3==0 else 'Error_Password', None if i%3==0 else ('Clave errónea' if i%2==0 else 'Usuario no registrado'))) for i in range(10)]; conn.commit(); print('✅ Registros sintéticos agregados.'); conn.close()"
+
+
+rueba 4: Renderizado de Métricas y Visualización
+Objetivo: Validar el cálculo automático de proporciones y la trazabilidad de errores acumulados en la interfaz visual.
+
+Procedimiento:
+
+Bash
+python generar_graficos.py
+Resultado Esperado:
+
+Gráfico de Dona (Tasa Global): Recalcula automáticamente el porcentaje global de éxito/error.
+
+Gráfico de Evolución por Secuencia: Despliega una curva acumulativa de fallos con marcadores en verde (éxitos) y rojo (errores), acompañados de sus respectivas etiquetas descriptivas (Clave errónea, Usuario no registrado).
+
+Exportación Automática: Guarda una copia en alta resolución del panel visual con el nombre reporte_rendimiento.png.
+
