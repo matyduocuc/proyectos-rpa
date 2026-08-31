@@ -1,0 +1,71 @@
+-- ==============================================================================
+-- SCRIPT DE INICIALIZACIÓN DE BASES DE DATOS - PROYECTO RPA
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- 1. BASE DE DATOS PRINCIPAL: rpa_db
+-- ------------------------------------------------------------------------------
+CREATE DATABASE IF NOT EXISTS rpa_db
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;
+
+USE rpa_db;
+
+-- Tabla 1: Gestión de Usuarios y Credenciales
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    rol VARCHAR(20) NOT NULL DEFAULT 'user',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Tabla 2: Logs de Auditoría y Control de Accesos (Alimenta a generar_graficos.py)
+CREATE TABLE IF NOT EXISTS logs_accesos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
+    username_intentado VARCHAR(50) NOT NULL,
+    estado VARCHAR(20) NOT NULL, -- 'Exitoso', 'Error_Password', etc.
+    tipo_error VARCHAR(50) NULL, -- 'Usuario no registrado', 'Clave errónea', etc.
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_logs_usuarios 
+        FOREIGN KEY (usuario_id) 
+        REFERENCES usuarios(id) 
+        ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Tabla 3: Trazabilidad de Automatización Web / Bot (Alimenta a bot_rpa.py)
+CREATE TABLE IF NOT EXISTS trazabilidad_rpa (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fec_inicio DATETIME NOT NULL,
+    fec_fin DATETIME NOT NULL,
+    tiempo VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL, -- 'OK' o 'ERROR'
+    mensaje VARCHAR(255) NOT NULL,
+    pc VARCHAR(100) NOT NULL,
+    cuenta_usuario VARCHAR(100) NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+
+-- ------------------------------------------------------------------------------
+-- 2. BASE DE DATOS SECUNDARIA / RESPALDO: rpa_db_backup
+-- ------------------------------------------------------------------------------
+CREATE DATABASE IF NOT EXISTS rpa_db_backup
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;
+
+USE rpa_db_backup;
+
+-- Espejo de la tabla de trazabilidad para contingencia o réplica de logs
+CREATE TABLE IF NOT EXISTS trazabilidad_rpa_historico (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fec_inicio DATETIME NOT NULL,
+    fec_fin DATETIME NOT NULL,
+    tiempo VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    mensaje VARCHAR(255) NOT NULL,
+    pc VARCHAR(100) NOT NULL,
+    cuenta_usuario VARCHAR(100) NOT NULL,
+    fecha_migracion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
